@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<!--
+  ============================================================
+  AI Memory Files 学習アプリ ｜ v2
+  CLAUDE.md / AGENTS.md / GEMINI.md
+  - 例は小売店舗運営の業務シーンに統一
+  - 配色: セージグリーン × アイボリー × テラコッタ
+  使い方: このファイルをダブルクリックするとブラウザで開きます。
+  カスタマイズ: 冒頭の CONFIG オブジェクトを編集してください。
+  ============================================================
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MEMORY FILES — AIに「店舗の常識」を教える3つのファイル</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Inter+Tight:wght@400;500;600;700&family=Zen+Kaku+Gothic+Antique:wght@400;500;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     カラー: セージグリーン × アイボリー × テラコッタ
+     ============================================================ */
+  :root {
+    --ink:         #3A4A2E;   /* メインのダークセージ（本文・サイドバー） */
+    --ink-soft:    #4B5C3D;
+    --sage:        #6B7F5A;   /* セージグリーン（中間色） */
+    --sage-light:  #A4B395;   /* 明るいセージ（ハイライト） */
+    --cream:       #F8F4EC;   /* アイボリー（ベース背景） */
+    --cream-deep:  #EFE9DA;
+    --terracotta:  #C66B47;   /* テラコッタ（差し色） */
+    --terracotta-soft: #D88B6B;
+    --warm-rose:   #B85C5C;   /* 不正解・警告色 */
+    --white:       #FFFFFF;
+    --line:        #3A4A2E22;
+    --line-soft:   #3A4A2E11;
+    --sidebar-w:   320px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Zen Kaku Gothic Antique', 'Inter Tight', sans-serif;
+    font-weight: 400;
+    background-color: var(--cream);
+    color: var(--ink);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.7;
+  }
+
+  .font-display { font-family: 'Anton', sans-serif; font-weight: 400; letter-spacing: -0.01em; }
+  .font-black   { font-family: 'Archivo Black', sans-serif; letter-spacing: -0.01em; }
+  .font-jp      { font-family: 'Zen Kaku Gothic Antique', sans-serif; }
+  .font-mono    { font-family: 'JetBrains Mono', monospace; }
+
+  /* レイアウト */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 100vh;
+  }
+  @media (min-width: 1024px) {
+    .layout { grid-template-columns: var(--sidebar-w) 1fr; }
+  }
+
+  .sidebar {
+    background: var(--ink);
+    color: var(--cream);
+    position: relative;
+  }
+  @media (min-width: 1024px) {
+    .sidebar {
+      position: sticky; top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 2px solid var(--ink);
+    }
+  }
+  @media (max-width: 1023px) {
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: 88%; max-width: 360px;
+      height: 100vh; z-index: 60;
+      transform: translateX(-100%);
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow-y: auto;
+      box-shadow: 8px 0 32px rgba(0,0,0,0.3);
+    }
+    .sidebar.open { transform: translateX(0); }
+  }
+
+  .sidebar-inner {
+    padding: 28px 24px;
+    display: flex; flex-direction: column;
+    min-height: 100%;
+  }
+  .sidebar-brand {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 32px;
+  }
+  .sidebar-progress-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    opacity: 0.5;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .sidebar-progress-bar {
+    height: 3px;
+    background: rgba(248, 244, 236, 0.15);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .sidebar-progress-fill {
+    height: 100%;
+    background: var(--terracotta);
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .chapter-nav { list-style: none; padding: 0; margin: 0; flex: 1; }
+  .chapter-item {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 14px;
+    align-items: start;
+    padding: 14px 12px;
+    margin: 0 -12px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    border: none; background: transparent;
+    color: var(--cream);
+    text-align: left;
+    width: calc(100% + 24px);
+  }
+  .chapter-item:hover { background: rgba(248, 244, 236, 0.05); }
+  .chapter-item.active { background: rgba(198, 107, 71, 0.15); }
+  .chapter-item.active .chapter-num-sm { color: var(--terracotta-soft); }
+  .chapter-item.completed .chapter-num-sm::after {
+    content: '✓';
+    color: var(--sage-light);
+    margin-left: 6px;
+    font-size: 12px;
+  }
+  .chapter-num-sm {
+    font-family: 'Anton', sans-serif;
+    font-size: 24px;
+    line-height: 1;
+    color: var(--cream);
+    opacity: 0.5;
+  }
+  .chapter-item.active .chapter-num-sm,
+  .chapter-item.completed .chapter-num-sm { opacity: 1; }
+  .chapter-meta { display: flex; flex-direction: column; gap: 4px; }
+  .chapter-tag-en {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+  .chapter-item.active .chapter-tag-en { color: var(--terracotta-soft); opacity: 1; }
+  .chapter-title-jp {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 500;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .sidebar-footer {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(248, 244, 236, 0.1);
+  }
+  .sidebar-reset {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    background: transparent; border: none;
+    color: var(--cream);
+    opacity: 0.5; cursor: pointer; padding: 0;
+    transition: opacity 0.2s ease;
+  }
+  .sidebar-reset:hover { opacity: 1; }
+
+  .sidebar-overlay {
+    position: fixed; inset: 0;
+    background: rgba(58, 74, 46, 0.6);
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+  @media (min-width: 1024px) { .sidebar-overlay { display: none; } }
+
+  .content { min-width: 0; background: var(--cream); }
+
+  .mobile-header {
+    position: sticky; top: 0; z-index: 40;
+    background: var(--cream);
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+  }
+  @media (min-width: 1024px) { .mobile-header { display: none; } }
+  .hamburger {
+    width: 40px; height: 40px;
+    background: var(--ink); color: var(--cream);
+    border: none;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    gap: 4px; cursor: pointer;
+  }
+  .hamburger span { width: 18px; height: 2px; background: var(--cream); }
+  .mobile-chapter-indicator {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  /* ヒーロー */
+  .hero {
+    padding: 40px 24px 32px;
+    border-bottom: 2px solid var(--ink);
+    background: var(--cream);
+    position: relative;
+    overflow: hidden;
+  }
+  @media (min-width: 768px) { .hero { padding: 56px 48px 40px; } }
+  @media (min-width: 1280px) { .hero { padding: 64px 64px 48px; } }
+
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 20px;
+  }
+  .hero-tag::before {
+    content: ''; width: 24px; height: 2px;
+    background: var(--terracotta);
+  }
+
+  .hero-en {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(40px, 6.5vw, 80px);
+    line-height: 0.95;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .hero-en-sub {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(40px, 6.5vw, 80px);
+    line-height: 0.95;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    color: var(--terracotta);
+    display: block;
+  }
+  .hero-jp {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 700;
+    font-size: clamp(20px, 2.6vw, 28px);
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    margin-top: 20px;
+  }
+  .hero-lead {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--ink);
+    opacity: 0.82;
+    margin-top: 16px;
+    max-width: 640px;
+  }
+  @media (min-width: 768px) { .hero-lead { font-size: 16px; } }
+
+  .hero-num-bg {
+    position: absolute;
+    top: -10px; right: -10px;
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(140px, 18vw, 220px);
+    line-height: 0.8;
+    color: var(--ink);
+    opacity: 0.05;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* マーキー */
+  .marquee {
+    overflow: hidden;
+    white-space: nowrap;
+    padding: 10px 0;
+    background: var(--ink);
+    color: var(--cream);
+    border-bottom: 2px solid var(--ink);
+  }
+  .marquee-track {
+    display: inline-flex;
+    gap: 32px;
+    animation: marquee 40s linear infinite;
+    will-change: transform;
+  }
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .marquee-item {
+    font-family: 'Anton', sans-serif;
+    font-size: 20px;
+    line-height: 1;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 32px;
+    opacity: 0.9;
+  }
+  .marquee-star {
+    display: inline-block;
+    width: 16px; height: 16px;
+    color: var(--terracotta);
+  }
+
+  /* 本文 */
+  .block {
+    padding: 36px 24px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  @media (min-width: 768px) { .block { padding: 48px; } }
+  @media (min-width: 1280px) { .block { padding: 56px 64px; } }
+
+  .block-label {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--terracotta);
+    margin-bottom: 10px;
+  }
+  .block-heading {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 1.45;
+    color: var(--ink);
+    margin-bottom: 16px;
+    letter-spacing: 0.01em;
+  }
+  @media (min-width: 768px) { .block-heading { font-size: 24px; } }
+  .block-body {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.95;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    max-width: 720px;
+  }
+  @media (min-width: 768px) { .block-body { font-size: 17px; } }
+  .block-body b, .block-body strong { font-weight: 700; }
+
+  .key {
+    background: var(--sage-light);
+    padding: 2px 6px;
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .key-rose { color: var(--terracotta); font-weight: 700; }
+
+  /* ビフォー/アフター */
+  .ba-wrapper { max-width: 760px; margin-top: 8px; }
+  .ba-tabs { display: flex; border-bottom: 2px solid var(--ink); }
+  .ba-tab {
+    padding: 12px 24px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .ba-tab.active { background: var(--ink); color: var(--cream); }
+  .ba-content {
+    padding: 28px 28px 24px;
+    background: var(--cream-deep);
+    border: 1px solid var(--line);
+    border-top: none;
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 1.85;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) { .ba-content { font-size: 17px; } }
+
+  /* 例示カード */
+  .example-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  @media (min-width: 768px) {
+    .example-grid { grid-template-columns: repeat(3, 1fr); gap: 0; }
+  }
+  .example-card {
+    padding: 24px 22px;
+    background: var(--cream-deep);
+    border: 1px solid var(--line);
+  }
+  @media (min-width: 768px) {
+    .example-card { border-right: none; }
+    .example-card:last-child { border-right: 1px solid var(--line); }
+  }
+  .example-num {
+    font-family: 'Anton', sans-serif;
+    font-size: 36px;
+    line-height: 1;
+    color: var(--terracotta);
+    margin-bottom: 8px;
+  }
+  .example-title {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .example-body {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 1.85;
+    color: var(--ink);
+    opacity: 0.85;
+  }
+
+  /* 3ファイル比較カード */
+  .h-scroll {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 8px 0 24px;
+    margin-top: 8px;
+    scrollbar-width: thin;
+  }
+  .h-scroll::-webkit-scrollbar { height: 6px; }
+  .h-scroll::-webkit-scrollbar-track { background: var(--line-soft); }
+  .h-scroll::-webkit-scrollbar-thumb { background: var(--ink); }
+  .h-scroll-item {
+    flex: 0 0 86%;
+    max-width: 360px;
+    scroll-snap-align: start;
+  }
+  @media (min-width: 640px) { .h-scroll-item { flex: 0 0 340px; } }
+
+  .concept-card {
+    padding: 28px 24px;
+    height: 100%;
+    border: 2px solid var(--ink);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .concept-card:hover { transform: translateY(-4px); }
+  .concept-card .num-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .concept-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+  }
+  .concept-en {
+    font-family: 'Anton', sans-serif;
+    font-size: 30px;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+  }
+  .concept-jp {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    margin-top: 6px;
+    opacity: 0.8;
+  }
+  .concept-divider {
+    border-top: 1.5px solid currentColor;
+    margin: 18px 0;
+    opacity: 0.4;
+  }
+  .concept-oneline {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  .concept-detail {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 1.85;
+    margin-top: 12px;
+    opacity: 0.85;
+  }
+  .concept-meta {
+    margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    opacity: 0.75;
+    line-height: 1.7;
+  }
+
+  /* ステップ */
+  .step-list { margin-top: 8px; max-width: 760px; }
+  .step-item {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 18px;
+    align-items: center;
+    padding: 18px 0;
+    border-top: 1px solid var(--line);
+  }
+  .step-item:last-child { border-bottom: 1px solid var(--line); }
+  .step-num {
+    font-family: 'Anton', sans-serif;
+    font-size: 40px;
+    line-height: 1;
+    color: var(--terracotta);
+  }
+  .step-text {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) {
+    .step-item { grid-template-columns: 72px 1fr; padding: 22px 0; }
+    .step-num { font-size: 48px; }
+    .step-text { font-size: 16px; }
+  }
+
+  /* チェックポイント */
+  .takeaway-list { margin-top: 8px; max-width: 760px; }
+  .takeaway-item {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    gap: 16px;
+    align-items: start;
+    padding: 14px 0;
+    border-top: 1px solid var(--line);
+  }
+  .takeaway-item:last-child { border-bottom: 1px solid var(--line); }
+  .takeaway-num {
+    font-family: 'Anton', sans-serif;
+    font-size: 22px;
+    line-height: 1.2;
+    color: var(--terracotta);
+    padding-top: 2px;
+  }
+  .takeaway-text {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 400;
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--ink);
+  }
+  @media (min-width: 768px) { .takeaway-text { font-size: 16px; } }
+
+  /* プルクオート */
+  .pullquote {
+    margin: 8px 0;
+    padding: 28px 28px 28px 36px;
+    background: var(--ink);
+    color: var(--cream);
+    position: relative;
+    max-width: 760px;
+  }
+  .pullquote-mark {
+    position: absolute;
+    top: 16px; left: 12px;
+    font-family: 'Anton', sans-serif;
+    font-size: 36px;
+    color: var(--terracotta-soft);
+    line-height: 1;
+  }
+  .pullquote-text {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+  }
+  @media (min-width: 768px) { .pullquote-text { font-size: 22px; } }
+
+  /* コード */
+  .code-block {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 22px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.85;
+    margin-top: 12px;
+    max-width: 760px;
+    border-left: 4px solid var(--terracotta);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code-block .code-comment { color: var(--sage-light); }
+  .code-block .code-heading { color: var(--terracotta-soft); font-weight: 700; }
+  .code-block .code-key { color: var(--terracotta); font-weight: 700; }
+
+  /* 比較表 */
+  .compare-table {
+    margin-top: 12px;
+    max-width: 760px;
+    overflow-x: auto;
+  }
+  .compare-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-size: 14px;
+  }
+  .compare-table th {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 14px 16px;
+    text-align: left;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 1px solid var(--ink);
+    white-space: nowrap;
+  }
+  .compare-table td {
+    padding: 14px 16px;
+    background: var(--cream-deep);
+    border: 1px solid var(--line);
+    vertical-align: top;
+    line-height: 1.7;
+  }
+  .compare-table td:first-child {
+    font-weight: 700;
+    background: var(--cream);
+    white-space: nowrap;
+  }
+  @media (min-width: 768px) {
+    .compare-table table { font-size: 15px; }
+  }
+
+  /* クイズ */
+  .quiz-wrapper {
+    background: var(--ink);
+    color: var(--cream);
+    padding: 32px 24px;
+    border-top: 2px solid var(--ink);
+    border-bottom: 2px solid var(--ink);
+  }
+  @media (min-width: 768px) { .quiz-wrapper { padding: 40px 48px; } }
+  @media (min-width: 1280px) { .quiz-wrapper { padding: 48px 64px; } }
+  .quiz-label {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .quiz-label-badge {
+    background: var(--terracotta); color: var(--cream);
+    padding: 4px 10px;
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .quiz-label-text {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+  .quiz-question {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--cream);
+    margin-bottom: 20px;
+    max-width: 720px;
+  }
+  @media (min-width: 768px) { .quiz-question { font-size: 19px; } }
+  .quiz-options { max-width: 720px; }
+  .quiz-option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 100%;
+    text-align: left;
+    padding: 18px 22px;
+    background: var(--cream);
+    border: 2px solid var(--cream);
+    margin-bottom: -2px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .quiz-option:hover:not(.locked) {
+    background: var(--sage-light);
+    border-color: var(--sage-light);
+    transform: translateX(6px);
+  }
+  .quiz-option.locked { cursor: default; }
+  .quiz-correct {
+    background: var(--sage-light) !important;
+    border-color: var(--sage-light) !important;
+  }
+  .quiz-wrong {
+    background: var(--warm-rose) !important;
+    border-color: var(--warm-rose) !important;
+    color: var(--cream) !important;
+  }
+  .opt-letter {
+    font-family: 'Anton', sans-serif;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--terracotta);
+    width: 24px;
+    flex-shrink: 0;
+  }
+  .quiz-correct .opt-letter { color: var(--ink); }
+  .quiz-wrong .opt-letter { color: var(--cream); }
+  .quiz-feedback {
+    margin-top: 18px;
+    padding: 20px 24px;
+    background: var(--terracotta);
+    color: var(--cream);
+    max-width: 720px;
+    border: 2px solid var(--cream);
+  }
+  .quiz-feedback-label {
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .quiz-feedback-body {
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+
+  /* フッター */
+  .chapter-footer {
+    padding: 40px 24px 80px;
+    text-align: center;
+  }
+  @media (min-width: 768px) { .chapter-footer { padding: 56px 48px 100px; } }
+  .btn-next {
+    display: inline-flex; align-items: center; gap: 14px;
+    padding: 18px 32px;
+    background: var(--ink); color: var(--cream);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-next::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--terracotta);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: 0;
+  }
+  .btn-next:hover::before { transform: translateY(0); }
+  .btn-next:hover { color: var(--cream); }
+  .btn-next > * { position: relative; z-index: 1; }
+  .btn-next:disabled { opacity: 0.25; cursor: not-allowed; }
+  .btn-prev {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 20px;
+    background: transparent;
+    color: var(--ink);
+    font-family: 'Archivo Black', sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid var(--ink);
+    cursor: pointer;
+    margin-right: 12px;
+    transition: all 0.2s ease;
+  }
+  .btn-prev:hover { background: var(--ink); color: var(--cream); }
+  .btn-prev:disabled { opacity: 0.25; cursor: not-allowed; }
+  .footer-meta {
+    margin-top: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    opacity: 0.5;
+    letter-spacing: 0.05em;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .reveal.in-view { opacity: 1; transform: translateY(0); }
+
+  /* 完了 */
+  .finale {
+    padding: 64px 24px;
+    text-align: center;
+    background: var(--cream);
+  }
+  .finale-fin {
+    font-family: 'Anton', sans-serif;
+    font-size: clamp(64px, 14vw, 140px);
+    line-height: 0.9;
+    color: var(--terracotta);
+    text-transform: uppercase;
+  }
+  .finale-message {
+    margin-top: 20px;
+    font-family: 'Zen Kaku Gothic Antique', sans-serif;
+    font-weight: 500;
+    font-size: clamp(16px, 2vw, 20px);
+    line-height: 1.85;
+    color: var(--ink);
+    max-width: 600px;
+    margin-left: auto; margin-right: auto;
+  }
+  .finale-accent {
+    display: inline-block;
+    font-family: 'Archivo Black', sans-serif;
+    color: var(--terracotta);
+    text-transform: uppercase;
+    font-size: 0.9em;
+    margin: 4px 0;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-brand">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+          <rect x="6" y="4" width="20" height="24" rx="1" stroke="#C66B47" stroke-width="2" fill="none"/>
+          <line x1="10" y1="12" x2="22" y2="12" stroke="#C66B47" stroke-width="1.5"/>
+          <line x1="10" y1="16" x2="22" y2="16" stroke="#C66B47" stroke-width="1.5"/>
+          <line x1="10" y1="20" x2="18" y2="20" stroke="#C66B47" stroke-width="1.5"/>
+        </svg>
+        <div>
+          <div class="font-black text-sm uppercase">MEMORY FILES</div>
+          <div class="font-mono text-[10px] opacity-50 mt-0.5">// for AI Agents</div>
+        </div>
+      </div>
+      <div class="sidebar-progress-label">
+        Progress · <span id="progressPercent">0</span>%
+      </div>
+      <div class="sidebar-progress-bar">
+        <div class="sidebar-progress-fill" id="progressFill" style="width: 0%;"></div>
+      </div>
+      <nav>
+        <ul class="chapter-nav" id="chapterNav"></ul>
+      </nav>
+      <div class="sidebar-footer">
+        <button class="sidebar-reset" id="resetBtn">↻ Reset Progress</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="content">
+    <div class="mobile-header">
+      <button class="hamburger" id="hamburger" aria-label="メニュー">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="flex items-center gap-2">
+        <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+          <rect x="6" y="4" width="20" height="24" rx="1" stroke="#C66B47" stroke-width="2" fill="none"/>
+        </svg>
+        <span class="font-black text-xs uppercase">MEMORY FILES</span>
+      </div>
+      <div class="mobile-chapter-indicator">
+        <span id="mobileCurrent">01</span><span class="opacity-30">/</span><span id="mobileTotal">06</span>
+      </div>
+    </div>
+    <div id="chapterContent"></div>
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG: Memory Files 学習コンテンツ（小売店舗運営版）
+   ============================================================ */
+const CONFIG = {
+  metaphor: {
+    title: "THE BIG IDEA",
+    body: "AIに、店舗の<span class='key'>「常識」</span>を教える特別なファイル。<br>会話のたびに自動で読まれる、AIへの「オリエンテーション資料」です。"
+  },
+
+  // 3つのファイル比較
+  files: [
+    {
+      number: "01",
+      labelEn: "AGENTS.md", labelJp: "業界標準",
+      bg: "#C66B47", fg: "#F8F4EC",
+      oneLine: "全AI共通の標準ファイル",
+      detail: "OpenAI・Google・Cursor・Sourcegraph・Factory が共同策定。現在は Linux Foundation 配下の Agentic AI Foundation が管理。世界中で広く採用されている。",
+      readers: "Codex / Copilot / Gemini CLI / Cursor / Claude Code（最近対応）",
+      strength: "1ファイルで全AIに通用"
+    },
+    {
+      number: "02",
+      labelEn: "CLAUDE.md", labelJp: "Claude専用",
+      bg: "#4B5C3D", fg: "#F8F4EC",
+      oneLine: "Anthropic Claude専用",
+      detail: "Claude がセッション開始時に自動で読み込む。@import 機能やサブディレクトリ対応など、Claude固有の高度な機能が使える。他のAIは読まない。",
+      readers: "Claude のみ",
+      strength: "Claude固有機能を活用"
+    },
+    {
+      number: "03",
+      labelEn: "GEMINI.md", labelJp: "Gemini専用",
+      bg: "#3A4A2E", fg: "#A4B395",
+      oneLine: "Google Gemini専用",
+      detail: "Gemini CLI / Gemini in Vertex AI 用の指示書。Gemini固有のコンテキストファイルとして読まれる。最近は Gemini CLI も AGENTS.md を認識するように。",
+      readers: "Gemini CLI / Vertex AI",
+      strength: "Gemini環境に最適化"
+    }
+  ],
+
+  marquees: {
+    1: "ONE FILE ★ EVERY AI ALREADY READS ★ NO PROMPT NEEDED ★",
+    2: "AGENTS MD ★ CLAUDE MD ★ GEMINI MD ★ THREE WAYS TO TEACH AI ★",
+    3: "THE OPEN STANDARD ★ ADOPTED BY THE INDUSTRY ★ READY TO USE ★",
+    4: "MEMORY VS SKILLS ★ ALWAYS-ON VS ON-DEMAND ★ KNOW THE DIFFERENCE ★",
+    5: "BRAND VOICE ★ STORE RULES ★ DO'S AND DON'TS ★ THE ESSENTIALS ★",
+    6: "WRITE IT TONIGHT ★ EVERY AI GETS SMARTER TOMORROW ★"
+  },
+
+  sections: [
+    /* ---------- 01 What ---------- */
+    {
+      id: 1, chapterNum: "01",
+      tagEn: "INTRO", tagJp: "メモリーファイルとは",
+      heroEn: "AI'S",
+      heroEnSub: "ORIENTATION.",
+      heroJp: "AIに、<br>店舗の常識を教える。",
+      lead: "AIは賢いですが、あなたの店舗のやり方を知りません。「メモリーファイル」を1つ用意するだけで、毎回の会話でAIが自動的に店舗の作法を理解した状態で動くようになります。",
+      blocks: [
+        { type: "metaphor" },
+        {
+          type: "text",
+          heading: "毎回同じ説明を繰り返していないか？",
+          labelEn: "THE PROBLEM",
+          body: "AIに資料作成や接客対応文の作成を頼むたびに、<span class='key-rose'>「うちの店は会員制で、メインの会員プランはVCで、対応時の口調は丁寧語、案内文の最後は『心よりお待ちしております』で締める…」</span>と毎回前置きを書いていませんか？<br><br>これがメモリーファイルで解決します。所定の場所に1つファイルを置けば、AIはそれを<b>毎回自動で読みます</b>。"
+        },
+        {
+          type: "beforeafter",
+          heading: "メモリーファイルがない時 / ある時",
+          labelEn: "BEFORE / AFTER",
+          before: {
+            label: "BEFORE",
+            text: "「会員様への案内メールを書いて」と頼むたびに：<br><br>「弊店は会員制店舗で、メインプランはVC、案内時は丁寧語、署名は『〇〇店スタッフ一同』、お得な特典の案内は控えめに…」<br><br><span class='key-rose'>→ 毎回前置きで20行以上消費。AIが過去の文脈を覚えていない。</span>"
+          },
+          after: {
+            label: "AFTER",
+            text: "「会員様への案内メールを書いて」だけでOK：<br><br><span class='key-rose'>→ AIがメモリーファイルを自動で読み、店舗のサービス内容・文体・署名ルール・案内の温度感をすべて理解した状態で文章を書く。</span>"
+          }
+        },
+        {
+          type: "text",
+          heading: "「Skillsとは別物」を最初に押さえる",
+          labelEn: "NOT SKILLS",
+          body: "前回学んだ Skills と混同しやすいので、最初に区別します。<br><br><b>メモリーファイル</b>＝店舗運営全体で<span class='key'>常に守ること</span>（例：店舗の文体ルール、ブランドの色味、禁止表現）<br><b>Skills</b>＝<span class='key'>特定タスクの手順書</span>（例：解約引止めの手順、新規入会案内の段取り）<br><br>役割が違うので、両方を併用するのが正解です。"
+        },
+        {
+          type: "pullquote",
+          text: "前置きを書く時代から、<br>AIが店舗の常識を持つ時代へ。"
+        },
+        {
+          type: "checkpoint",
+          items: [
+            "メモリーファイル＝AIが会話のたびに自動で読む「常識ファイル」",
+            "所定の場所に置くだけで動く",
+            "Skillsとは役割が違う。両方を併用するのが正解"
+          ]
+        }
+      ],
+      quiz: null
+    },
+
+    /* ---------- 02 Three Files ---------- */
+    {
+      id: 2, chapterNum: "02",
+      tagEn: "THREE FILES", tagJp: "3つのファイル",
+      heroEn: "THREE",
+      heroEnSub: "MEMORY FILES.",
+      heroJp: "AIごとに、<br>名前と読み方が違う。",
+      lead: "AGENTS.md / CLAUDE.md / GEMINI.md——同じ役割の3つのファイル。それぞれ「どのAIが読むか」と「強み」が違います。",
+      blocks: [
+        { type: "filesCarousel" },
+        {
+          type: "text",
+          heading: "AGENTS.md が業界標準になった経緯",
+          labelEn: "THE STANDARD",
+          body: "かつてAIごとに別々の設定ファイルが必要でした。Cursor、Copilot、Claude、Gemini、それぞれ違うファイル名で<span class='key-rose'>同じ内容を何度も書く必要があった</span>。<br><br>これを統一しようと OpenAI・Google・Cursor・Sourcegraph・Factory が手を組み、<span class='key'>AGENTS.md という共通標準</span>を策定しました。現在は Linux Foundation 配下の組織が管理しています。"
+        },
+        {
+          type: "compareTable",
+          headers: ["項目", "AGENTS.md", "CLAUDE.md", "GEMINI.md"],
+          rows: [
+            ["読むAI", "ほぼ全AI", "Claudeのみ", "Geminiのみ"],
+            ["業界標準", "○ 標準仕様", "× Claude固有", "× Gemini固有"],
+            ["採用状況", "業界全体で広く採用", "Claudeユーザーで普及", "Geminiユーザーで普及"],
+            ["特殊機能", "シンプルなMarkdown", "@import / サブディレクトリ対応", "Gemini環境統合"]
+          ]
+        },
+        {
+          type: "pullquote",
+          text: "迷ったら AGENTS.md。<br>これが2026年の標準解。"
+        },
+        {
+          type: "checkpoint",
+          items: [
+            "AGENTS.md は業界標準。OpenAI・Google・Cursorらが共同策定",
+            "CLAUDE.md は Claude 専用、GEMINI.md は Gemini 専用",
+            "1つだけ作るなら AGENTS.md が現実的"
+          ]
+        }
+      ],
+      quiz: {
+        question: "店舗で複数のAIツール(Claude、ChatGPT、Gemini)を使い分けている場合、1つだけメモリーファイルを作るならどれ？",
+        options: [
+          { text: "CLAUDE.md", correct: false, reason: "Claude 以外のAIは読みません。ChatGPT や Gemini で使えなくなります。" },
+          { text: "AGENTS.md", correct: true, reason: "正解。業界標準なので、複数のAIで共通して使えます。メンテナンスの手間が最も少ない。" },
+          { text: "GEMINI.md", correct: false, reason: "Gemini 以外のAIは読みません。" }
+        ]
+      }
+    },
+
+    /* ---------- 03 Anatomy ---------- */
+    {
+      id: 3, chapterNum: "03",
+      tagEn: "ANATOMY", tagJp: "中身の書き方",
+      heroEn: "WHAT",
+      heroEnSub: "TO WRITE.",
+      heroJp: "何を、どう書くのか。",
+      lead: "メモリーファイルはただのMarkdownテキスト。決まった書式はなく自由に書けますが、効くパターンが存在します。5つの基本セクションを押さえます。",
+      blocks: [
+        {
+          type: "text",
+          heading: "効くAGENTS.mdの5つの基本セクション",
+          labelEn: "FIVE ESSENTIAL SECTIONS",
+          body: "店舗運営での実例から導かれる、効果的な構成です。<br><br><b>1. Business Context（事業の前提）</b>：何の店か、顧客は誰か<br><b>2. Brand Voice（文体・口調）</b>：書き方のトーン<br><b>3. Standard Formats（定型フォーマット）</b>：書類・案内文の型<br><b>4. Customer Rules（顧客対応ルール）</b>：会員区分や応対の原則<br><b>5. Don'ts（禁止事項）</b>：絶対にやってはいけないこと"
+        },
+        {
+          type: "codeBlock",
+          code: `<span class="code-comment"># 店舗運営 AI ガイド</span>
+
+<span class="code-heading">## Business Context</span>
+- 業態: 会員制の小売店舗
+- 主要会員プラン: VC（メイン）、EX、AO、LW、DX
+- 平均的な顧客層: 40〜60代、ITに慣れていない層も多い
+
+<span class="code-heading">## Brand Voice</span>
+- 文体: 丁寧語（〜です・〜ます調）
+- 口調: 親しみやすく、押し付けない
+- 専門用語は使わず、たとえ話で説明する
+- 絵文字は使わない
+
+<span class="code-heading">## Standard Formats</span>
+- 案内メールの締め: 「心よりお待ちしております」
+- 署名: 「〇〇店スタッフ一同」
+- 日付表記: 和暦ではなく西暦
+- 金額は「税込」を明示
+
+<span class="code-heading">## Customer Rules</span>
+- 会員様への呼びかけは「〇〇様」
+- VC会員様への特別案内は丁寧度を一段上げる
+- 解約話題は否定せず、まず理由を伺う
+
+<span class="code-key">## Don'ts</span>
+- 「絶対」「必ず」などの断定表現は使わない
+- 競合他社名を出さない
+- お客様の個人情報を文章に含めない
+- 案内文の冒頭で「お得情報」を強調しない`
+        },
+        {
+          type: "text",
+          heading: "「短く」が鉄則",
+          labelEn: "KEEP IT SHORT",
+          body: "メモリーファイルは<span class='key'>毎回読まれる</span>ため、長すぎるとAIの処理容量を圧迫し、本来の作業に使える分が減ります。<br><br>目安は<b>200〜500行以内</b>。詳細なマニュアル類は別ファイルに分離し、AGENTS.md からは「詳細はこちら参照」と参照だけする。"
+        },
+        {
+          type: "pullquote",
+          text: "メモリーファイルは「概要」を書く場所。<br>「全部」を書く場所ではない。"
+        },
+        {
+          type: "checkpoint",
+          items: [
+            "基本5セクション：事業前提 / 文体 / フォーマット / 顧客対応 / 禁止事項",
+            "200〜500行以内に収める",
+            "詳細なマニュアルは別ファイルに分離し、参照だけする"
+          ]
+        }
+      ],
+      quiz: {
+        question: "メモリーファイルに最も書くべきでない内容は？",
+        options: [
+          { text: "店舗の文体ルール（〇〇です・ます調など）", correct: false, reason: "むしろ最重要のひとつ。これがあると毎回の口調指示が不要になります。" },
+          { text: "店舗運営マニュアルの全文(数百ページ)", correct: true, reason: "正解。毎回読まれるので、長すぎるとAIの処理容量を圧迫します。詳細は別ファイルに分離して参照だけする。" },
+          { text: "禁止事項（やってはいけないこと）", correct: false, reason: "Don'tsセクションは効果的です。曖昧な「気をつけて」より具体的に書きます。" }
+        ]
+      }
+    },
+
+    /* ---------- 04 Memory vs Skills ---------- */
+    {
+      id: 4, chapterNum: "04",
+      tagEn: "VS SKILLS", tagJp: "Skillsとの違いを明確に",
+      heroEn: "MEMORY",
+      heroEnSub: "VS SKILLS.",
+      heroJp: "常に読む / 必要な時だけ読む。",
+      lead: "メモリーファイルと Skills、似ているようで全く違います。両者を正しく使い分けることが、AI活用の核心です。",
+      blocks: [
+        {
+          type: "text",
+          heading: "決定的な違いは「いつ読むか」",
+          labelEn: "WHEN THEY LOAD",
+          body: "<b>メモリーファイル</b>はセッション開始時に<span class='key'>必ず全文読まれる</span>。常時参照される。<br><b>Skills</b>はAIが必要と判断した時だけ<span class='key'>本体が読まれる</span>（前章で学んだprogressive disclosure）。普段は description だけ確認している。<br><br>つまり：<br>・常に守って欲しいルール → メモリーファイル<br>・特定の業務が発生した時に発動する手順 → Skills"
+        },
+        {
+          type: "compareTable",
+          headers: ["観点", "メモリーファイル", "Skills"],
+          rows: [
+            ["読まれるタイミング", "セッション開始時に必ず全文", "必要な時だけ本体"],
+            ["役割", "店舗運営全体の常識・規約", "特定業務の手順書"],
+            ["記述粒度", "短く要点だけ（200〜500行）", "詳細な手順（長くても可）"],
+            ["代表的内容", "文体、署名、禁止事項、会員区分", "解約引止め手順、入会案内手順"],
+            ["アナロジー", "新人スタッフへのオリエンテーション", "業務マニュアル"]
+          ]
+        },
+        {
+          type: "text",
+          heading: "両者は併用するもの",
+          labelEn: "USE BOTH",
+          body: "理想的な構成は、AGENTS.md（メモリー）と複数のSKILL.md（個別タスク）の<span class='key'>レイヤー構造</span>です。<br><br>・AGENTS.md：「店舗で常に守るべき規約」<br>・SKILL.md（複数）：「特定の業務シーンが来た時の手順」<br><br>業界の公式ドキュメントでも「メモリーファイルと Skills を組み合わせよ」と明記されています。"
+        },
+        {
+          type: "codeBlock",
+          code: `<span class="code-comment"># 推奨レイヤー構造（店舗運営の例）</span>
+
+📁 my-store/
+  ├─ <span class="code-heading">AGENTS.md</span>            <span class="code-comment">← 常に読まれる「店舗の常識」</span>
+  ├─ skills/
+  │   ├─ <span class="code-heading">membership-cancel/</span>  <span class="code-comment">← 解約引止め手順</span>
+  │   │   └─ SKILL.md
+  │   ├─ <span class="code-heading">new-member-welcome/</span> <span class="code-comment">← 新規入会案内手順</span>
+  │   │   └─ SKILL.md
+  │   └─ <span class="code-heading">complaint-handling/</span> <span class="code-comment">← クレーム対応手順</span>
+  │       └─ SKILL.md
+  └─ docs/                <span class="code-comment">← 詳細マニュアル類</span></span>`
+        },
+        {
+          type: "pullquote",
+          text: "メモリーは「常識」。<br>Skillsは「専門技能」。"
+        },
+        {
+          type: "checkpoint",
+          items: [
+            "メモリーファイル＝常時読まれる、Skills＝必要時のみ読まれる",
+            "メモリーには「常に守ること」、Skillsには「特定業務の手順」",
+            "理想は両者をレイヤー構造で組み合わせる"
+          ]
+        }
+      ],
+      quiz: {
+        question: "次の項目、メモリーファイルとSkillsのどちらに書くのが適切？「会員様への呼びかけは『〇〇様』で統一する」",
+        options: [
+          { text: "メモリーファイル（AGENTS.md）", correct: true, reason: "正解。呼びかけ方は「常に守るべきこと」なので、毎回必ず読まれるメモリーファイルに書きます。" },
+          { text: "Skills（SKILL.md）", correct: false, reason: "Skillsは「特定タスク発生時」に読まれます。呼びかけ方は全業務共通で常に守るものなので、メモリーファイル向きです。" },
+          { text: "どちらでもない", correct: false, reason: "メモリーファイルに書くのが適切です。" }
+        ]
+      }
+    },
+
+    /* ---------- 05 Patterns ---------- */
+    {
+      id: 5, chapterNum: "05",
+      tagEn: "PATTERNS", tagJp: "効くファイルの書き方",
+      heroEn: "WRITE",
+      heroEnSub: "WHAT WORKS.",
+      heroJp: "効くファイル、<br>効かないファイル。",
+      lead: "メモリーファイルは書き方次第で大きく効果が変わります。実用パターンを5つに整理します。",
+      blocks: [
+        {
+          type: "text",
+          heading: "パターン1：「事業前提」を最初に書く",
+          labelEn: "CONTEXT FIRST",
+          body: "AIが文章を書く前に、<span class='key'>どんな店で、誰に向けて</span>書くのかを最初に伝える。「会員制小売店、平均的な顧客は40〜60代」と書くだけで、AIの言葉選びが劇的に変わります。"
+        },
+        {
+          type: "text",
+          heading: "パターン2：具体例を1つ添える",
+          labelEn: "ONE CONCRETE EXAMPLE",
+          body: "「丁寧な文体で」よりも、<span class='key'>「例：心よりお待ちしております」</span>のように見本を1つ書く方がAIに伝わります。抽象的な指示の10倍効きます。"
+        },
+        {
+          type: "text",
+          heading: "パターン3：Don'ts（禁止事項）を明示",
+          labelEn: "EXPLICIT DON'TS",
+          body: "「適切に対応してください」は曖昧で効きません。<span class='key'>「お得情報を冒頭で強調しない」「競合他社名を出さない」</span>のように明確な禁止事項を書く。AIは「これをやるな」と書かれた指示によく従います。"
+        },
+        {
+          type: "text",
+          heading: "パターン4：個別タスクの指示でなく「永続ルール」を書く",
+          labelEn: "PERMANENT, NOT TASK-SPECIFIC",
+          body: "「今日は周年キャンペーンの案内文を書きたい」のような個別の依頼は<span class='key-rose'>メモリーファイルに書かない</span>——毎回読まれるため、古いタスク指示がノイズになります。個別の依頼は会話の中で伝え、メモリーファイルには<b>いつも変わらないルール</b>だけを書く。"
+        },
+        {
+          type: "text",
+          heading: "パターン5：階層化でスコープを切る",
+          labelEn: "HIERARCHY",
+          body: "メモリーファイルはサブフォルダにも置けます。例：店舗全体のフォルダにメインのAGENTS.mdを置きつつ、特定の業務カテゴリ（会員管理、接客対応など）のサブフォルダにそれぞれ追加のAGENTS.mdを置く。<br><br>これで「全体ルール／そのカテゴリ特有のルール」と分離でき、ファイルが肥大化しません。"
+        },
+        {
+          type: "pullquote",
+          text: "短く、具体的に、永続的に。"
+        },
+        {
+          type: "checkpoint",
+          items: [
+            "事業前提（業態・顧客層）を最初に書くと最も効く",
+            "「丁寧な文体」より「例：〇〇」のように見本を添える",
+            "Don'ts セクションで禁止事項を明確化",
+            "個別タスクの指示は書かない（毎回読まれるため）",
+            "階層化でファイル肥大を防ぐ"
+          ]
+        }
+      ],
+      quiz: {
+        question: "メモリーファイルに最も書くべき内容として、複数のガイドが共通して挙げているのは？",
+        options: [
+          { text: "店舗の歴史や創業エピソード", correct: false, reason: "悪くはありませんが、最重要ではありません。AIの処理容量を多く使ってしまいます。" },
+          { text: "事業の前提と具体的な文体例（見本）", correct: true, reason: "正解。「業態・顧客層」と「実際の文体の見本」があると、AIの言葉選びが劇的に正確になります。" },
+          { text: "スタッフ全員の名簿", correct: false, reason: "AIの作業にはほぼ関係ない情報です。" }
+        ]
+      }
+    },
+
+    /* ---------- 06 Tonight ---------- */
+    {
+      id: 6, chapterNum: "06",
+      tagEn: "DO IT", tagJp: "今夜、AGENTS.mdを書く",
+      heroEn: "ONE FILE.",
+      heroEnSub: "TONIGHT.",
+      heroJp: "知識を、今夜の20分に変える。",
+      lead: "メモリーファイルは20分で書けます。AGENTS.md を1つ用意するだけで、明日からあなたが使うすべてのAIが、店舗の常識を持った状態で動き出します。",
+      blocks: [
+        {
+          type: "text",
+          heading: "まず作るのは AGENTS.md 一択",
+          labelEn: "START WITH AGENTS.MD",
+          body: "Claude も ChatGPT も Gemini も、ほぼ全部のAIが AGENTS.md を読みます。最初の1ファイルとして書く価値が最大。<br><br>後から Claude 固有機能が必要になったら、CLAUDE.md を追加して<span class='key'>AGENTS.md を import するだけの薄いラッパー</span>にするのが推奨パターンです。"
+        },
+        {
+          type: "steps",
+          heading: "AGENTS.md を書く6ステップ",
+          labelEn: "HOW TO START",
+          steps: [
+            "AGENTS.md という名前の空ファイルを作成",
+            "## Business Context で業態と顧客層を書く",
+            "## Brand Voice で文体ルールを書く（必ず具体例を1つ）",
+            "## Standard Formats で署名・締めの言葉・日付表記を書く",
+            "## Don'ts で「絶対やってはいけないこと」を3つ書く",
+            "AIに「会員様への案内を書いて」と頼んで、ファイルが効いているか確認"
+          ]
+        },
+        {
+          type: "text",
+          heading: "つまずきがちなポイント",
+          labelEn: "COMMON PITFALLS",
+          body: "<b>1.</b> 完璧主義は禁物。最初は7割完成度でOK。<br><b>2.</b> 長すぎると逆効果。<span class='key'>200〜500行を超えたら分割を検討</span>する。<br><b>3.</b> 個別タスクの指示は書かない（会話の中で伝える）。<br><b>4.</b> 季節キャンペーンや料金改定など、店舗の状況が変わるたびに<span class='key'>定期的にメンテナンス</span>する。古い情報が残るとAIが間違った案内文を書く。"
+        },
+        {
+          type: "text",
+          heading: "応用：Memory + Skills + MCP の3層構造",
+          labelEn: "THE FULL STACK",
+          body: "本研修シリーズで学んだ3つを組み合わせると、強力な3層構造になります：<br><br><b>AGENTS.md</b>（メモリー）＝常に守る「店舗の常識」<br><b>SKILL.md</b>（複数）＝特定業務の「手順書」<br><b>MCP</b>＝外部サービス（カレンダー、メール、顧客管理など）との「接続」<br><br>この3つを揃えると、AIが店舗の文脈を完全に理解した状態で、外部システムまで操作できる「専門スタッフ」になります。"
+        },
+        {
+          type: "pullquote",
+          text: "完璧を待たない。<br>今夜書いて、明日から育てる。"
+        },
+        {
+          type: "checkpoint",
+          items: [
+            "最初に書くなら AGENTS.md 一択",
+            "事業前提・文体・フォーマット・禁止事項の4セクションで十分",
+            "200〜500行以内に収める",
+            "完璧を目指さず、使いながら追記して育てる",
+            "Memory + Skills + MCP の3層構造で本領発揮"
+          ]
+        },
+        { type: "finale" }
+      ],
+      quiz: null
+    }
+  ]
+};
+
+/* 状態管理 */
+const STORAGE_KEY = 'memory-files-progress-v2';
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { currentSection: 0, completedSections: [] };
+}
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+let state = loadState();
+
+const chapterNav = document.getElementById('chapterNav');
+
+function renderSidebar() {
+  const total = CONFIG.sections.length;
+  const completedCount = state.completedSections.length;
+  const percent = Math.round((completedCount / total) * 100);
+
+  document.getElementById('progressPercent').textContent = percent;
+  document.getElementById('progressFill').style.width = `${percent}%`;
+  document.getElementById('mobileCurrent').textContent = String(state.currentSection + 1).padStart(2, '0');
+  document.getElementById('mobileTotal').textContent = String(total).padStart(2, '0');
+
+  chapterNav.innerHTML = CONFIG.sections.map((section, i) => {
+    const isActive = i === state.currentSection;
+    const isCompleted = state.completedSections.includes(section.id);
+    return `
+      <li>
+        <button class="chapter-item ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}" data-section="${i}">
+          <div class="chapter-num-sm">${section.chapterNum}</div>
+          <div class="chapter-meta">
+            <div class="chapter-tag-en">${section.tagEn}</div>
+            <div class="chapter-title-jp">${section.tagJp}</div>
+          </div>
+        </button>
+      </li>
+    `;
+  }).join('');
+
+  chapterNav.querySelectorAll('.chapter-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.section, 10);
+      goToSection(idx);
+      closeSidebar();
+    });
+  });
+}
+
+const chapterContent = document.getElementById('chapterContent');
+
+function renderChapter() {
+  const section = CONFIG.sections[state.currentSection];
+  const total = CONFIG.sections.length;
+  let html = '';
+
+  html += `
+    <section class="hero">
+      <div class="hero-num-bg">${section.chapterNum}</div>
+      <div class="relative" style="z-index: 1;">
+        <div class="hero-tag reveal">
+          <span>CHAPTER ${section.chapterNum}</span>
+          <span style="opacity: 0.4;">/</span>
+          <span>${section.tagEn}</span>
+        </div>
+        <h1 class="hero-en reveal">${section.heroEn}</h1>
+        <h1 class="hero-en-sub reveal">${section.heroEnSub}</h1>
+        <p class="hero-jp reveal">${section.heroJp}</p>
+        <p class="hero-lead reveal">${section.lead}</p>
+      </div>
+    </section>
+    <div class="marquee">
+      <div class="marquee-track">
+        ${renderMarqueeContent(CONFIG.marquees[section.id])}
+      </div>
+    </div>
+  `;
+
+  section.blocks.forEach((block, idx) => {
+    html += renderBlock(block, idx);
+  });
+
+  if (section.quiz) {
+    html += renderQuiz(section.quiz, section.id);
+  }
+
+  const isCompleted = state.completedSections.includes(section.id);
+  const isLast = state.currentSection === total - 1;
+  const isFirst = state.currentSection === 0;
+
+  html += `
+    <div class="chapter-footer">
+      <button id="prevBtn" class="btn-prev" ${isFirst ? 'disabled' : ''}>← Prev</button>
+      <button id="nextBtn" class="btn-next">
+        ${isLast
+          ? (isCompleted ? '<span>↻ Read Again</span>' : '<span>✓ Complete</span>')
+          : (isCompleted ? '<span>↻ Next Chapter</span><span>→</span>' : '<span>Next Chapter</span><span>→</span>')}
+      </button>
+      <div class="footer-meta">
+        ${isLast ? '// END OF MEMORY FILES GUIDE' : `// Chapter ${String(state.currentSection + 2).padStart(2, '0')} awaits`}
+      </div>
+    </div>
+  `;
+
+  chapterContent.innerHTML = html;
+
+  setupObserver();
+  attachQuizHandlers(section);
+  attachBeforeAfterHandlers();
+  attachFooterHandlers();
+}
+
+function renderMarqueeContent(text) {
+  const item = `<div class="marquee-item">${text.replace(/★/g, '<svg class="marquee-star" viewBox="0 0 32 32" fill="currentColor"><path d="M16 0 L19 13 L32 16 L19 19 L16 32 L13 19 L0 16 L13 13 Z"/></svg>')}</div>`;
+  return item.repeat(4);
+}
+
+function renderBlock(block, idx) {
+  switch (block.type) {
+
+    case "metaphor":
+      return `
+        <section class="block">
+          <div class="block-label reveal">— ${CONFIG.metaphor.title}</div>
+          <div class="reveal" style="font-family: 'Zen Kaku Gothic Antique', sans-serif; font-weight: 500; font-size: clamp(18px, 2.4vw, 24px); line-height: 1.7; color: var(--ink); max-width: 760px;">
+            ${CONFIG.metaphor.body}
+          </div>
+        </section>
+      `;
+
+    case "text":
+      return `
+        <section class="block">
+          ${block.labelEn ? `<div class="block-label reveal">— ${block.labelEn}</div>` : ''}
+          ${block.heading ? `<h2 class="block-heading reveal">${block.heading}</h2>` : ''}
+          <div class="block-body reveal">${block.body}</div>
+        </section>
+      `;
+
+    case "codeBlock":
+      return `
+        <section class="block" style="padding-top: 0;">
+          <pre class="code-block reveal">${block.code}</pre>
+        </section>
+      `;
+
+    case "filesCarousel":
+      return `
+        <section class="block">
+          <div class="block-label reveal">— THREE FILES</div>
+          <h2 class="block-heading reveal">3つのメモリーファイル</h2>
+          <div class="block-body reveal" style="margin-bottom: 12px;">
+            ← 左右にスクロールしてご覧ください →
+          </div>
+          <div class="h-scroll reveal">
+            ${CONFIG.files.map(d => `
+              <div class="h-scroll-item">
+                <div class="concept-card" style="background: ${d.bg}; color: ${d.fg};">
+                  <div class="num-row">
+                    <span class="concept-num">${d.number}</span>
+                  </div>
+                  <div class="concept-en">${d.labelEn}</div>
+                  <div class="concept-jp">${d.labelJp}</div>
+                  <div class="concept-divider"></div>
+                  <div class="concept-oneline">${d.oneLine}</div>
+                  <p class="concept-detail">${d.detail}</p>
+                  <div class="concept-meta">
+                    ▸ 読むAI: ${d.readers}<br>
+                    ▸ 強み: ${d.strength}
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      `;
+
+    case "compareTable":
+      return `
+        <section class="block">
+          <div class="compare-table reveal">
+            <table>
+              <thead>
+                <tr>
+                  ${block.headers.map(h => `<th>${h}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${block.rows.map(row => `
+                  <tr>
+                    ${row.map(cell => `<td>${cell}</td>`).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      `;
+
+    case "beforeafter":
+      return `
+        <section class="block">
+          ${block.labelEn ? `<div class="block-label reveal">— ${block.labelEn}</div>` : ''}
+          <h2 class="block-heading reveal">${block.heading}</h2>
+          <div class="ba-wrapper reveal">
+            <div class="ba-tabs">
+              <button class="ba-tab active" data-target="ba-${idx}" data-mode="before">${block.before.label}</button>
+              <button class="ba-tab" data-target="ba-${idx}" data-mode="after">${block.after.label}</button>
+            </div>
+            <div id="ba-${idx}" class="ba-content">
+              <div data-content="before">${block.before.text}</div>
+              <div data-content="after" class="hidden">${block.after.text}</div>
+            </div>
+          </div>
+        </section>
+      `;
+
+    case "pullquote":
+      return `
+        <section class="block">
+          <div class="pullquote reveal">
+            <div class="pullquote-mark">"</div>
+            <div class="pullquote-text">${block.text}</div>
+          </div>
+        </section>
+      `;
+
+    case "exampleCards":
+      return `
+        <section class="block">
+          ${block.labelEn ? `<div class="block-label reveal">— ${block.labelEn}</div>` : ''}
+          ${block.heading ? `<h2 class="block-heading reveal">${block.heading}</h2>` : ''}
+          <div class="example-grid reveal">
+            ${block.examples.map(ex => `
+              <div class="example-card">
+                <div class="example-num">${ex.num}</div>
+                <div class="example-title">${ex.title}</div>
+                <div class="example-body">${ex.body}</div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      `;
+
+    case "steps":
+      return `
+        <section class="block">
+          ${block.labelEn ? `<div class="block-label reveal">— ${block.labelEn}</div>` : ''}
+          <h2 class="block-heading reveal">${block.heading}</h2>
+          <ol class="step-list reveal">
+            ${block.steps.map((s, i) => `
+              <li class="step-item">
+                <div class="step-num">${String(i + 1).padStart(2, '0')}</div>
+                <div class="step-text">${s}</div>
+              </li>
+            `).join('')}
+          </ol>
+        </section>
+      `;
+
+    case "checkpoint":
+      return `
+        <section class="block">
+          <div class="block-label reveal">— TAKEAWAYS</div>
+          <h2 class="block-heading reveal">ここまでで分かったこと</h2>
+          <ul class="takeaway-list reveal">
+            ${block.items.map((item, i) => `
+              <li class="takeaway-item">
+                <div class="takeaway-num">${String(i + 1).padStart(2, '0')}</div>
+                <div class="takeaway-text">${item}</div>
+              </li>
+            `).join('')}
+          </ul>
+        </section>
+      `;
+
+    case "finale":
+      return `
+        <section class="finale">
+          <div class="reveal">
+            <div class="finale-fin">FIN.</div>
+          </div>
+          <div class="reveal finale-message">
+            おつかれさまでした。<br>
+            <span class="finale-accent">TONIGHT,</span><br>
+            店舗のフォルダに AGENTS.md を1つ置く。<br>
+            明日からあなたが使うすべてのAIが、店舗の常識を持った仲間になります。
+          </div>
+        </section>
+      `;
+
+    default:
+      return '';
+  }
+}
+
+function renderQuiz(quiz, sectionId) {
+  return `
+    <section class="quiz-wrapper">
+      <div class="quiz-label">
+        <span class="quiz-label-badge">CHECK</span>
+        <span class="quiz-label-text">Quick Quiz</span>
+      </div>
+      <div class="quiz-question">${quiz.question}</div>
+      <div class="quiz-options" id="quiz-${sectionId}">
+        ${quiz.options.map((opt, i) => `
+          <button class="quiz-option" data-correct="${opt.correct}" data-index="${i}">
+            <span class="opt-letter">${String.fromCharCode(65 + i)}</span>
+            <span>${opt.text}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div id="quiz-feedback-${sectionId}" class="quiz-feedback hidden"></div>
+    </section>
+  `;
+}
+
+function attachQuizHandlers(section) {
+  if (!section.quiz) return;
+  const container = document.getElementById(`quiz-${section.id}`);
+  if (!container) return;
+
+  const options = container.querySelectorAll('.quiz-option');
+  const feedback = document.getElementById(`quiz-feedback-${section.id}`);
+
+  options.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isCorrect = btn.dataset.correct === 'true';
+      const idx = parseInt(btn.dataset.index, 10);
+      options.forEach(b => b.classList.add('locked'));
+      btn.classList.add(isCorrect ? 'quiz-correct' : 'quiz-wrong');
+      options.forEach(b => {
+        if (b.dataset.correct === 'true' && !b.classList.contains('quiz-correct')) {
+          b.classList.add('quiz-correct');
+        }
+      });
+      const reason = section.quiz.options[idx].reason;
+      feedback.innerHTML = `
+        <div class="quiz-feedback-label">${isCorrect ? '✓ CORRECT.' : '✗ NOT QUITE.'}</div>
+        <div class="quiz-feedback-body">${reason}</div>
+      `;
+      feedback.classList.remove('hidden');
+    });
+  });
+}
+
+function attachBeforeAfterHandlers() {
+  document.querySelectorAll('.ba-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const mode = btn.dataset.mode;
+      const target = document.getElementById(targetId);
+      const group = btn.parentElement.querySelectorAll('.ba-tab');
+      group.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      target.querySelectorAll('[data-content]').forEach(c => {
+        c.classList.toggle('hidden', c.dataset.content !== mode);
+      });
+    });
+  });
+}
+
+function attachFooterHandlers() {
+  const total = CONFIG.sections.length;
+  const isFirst = state.currentSection === 0;
+  const isLast = state.currentSection === total - 1;
+  const isCompleted = state.completedSections.includes(CONFIG.sections[state.currentSection].id);
+
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+
+  if (prevBtn && !isFirst) {
+    prevBtn.addEventListener('click', () => {
+      goToSection(state.currentSection - 1);
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      const sId = CONFIG.sections[state.currentSection].id;
+      if (!state.completedSections.includes(sId)) {
+        state.completedSections.push(sId);
+      }
+      if (!isLast) {
+        goToSection(state.currentSection + 1);
+      } else if (isCompleted) {
+        goToSection(0);
+      } else {
+        saveState();
+        renderSidebar();
+        renderChapter();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }
+}
+
+function goToSection(idx) {
+  state.currentSection = idx;
+  saveState();
+  renderSidebar();
+  renderChapter();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+let observer;
+function setupObserver() {
+  if (observer) observer.disconnect();
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('in-view');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebarOverlay');
+const hamburger = document.getElementById('hamburger');
+
+function openSidebar() {
+  sidebar.classList.add('open');
+  sidebarOverlay.classList.add('open');
+}
+function closeSidebar() {
+  sidebar.classList.remove('open');
+  sidebarOverlay.classList.remove('open');
+}
+hamburger.addEventListener('click', openSidebar);
+sidebarOverlay.addEventListener('click', closeSidebar);
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('進捗をリセットして最初から始めますか？')) {
+    state = { currentSection: 0, completedSections: [] };
+    saveState();
+    renderSidebar();
+    renderChapter();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+renderSidebar();
+renderChapter();
+</script>
+
+</body>
+</html>
